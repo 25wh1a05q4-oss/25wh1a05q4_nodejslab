@@ -1,72 +1,69 @@
 const express = require("express");
-
-const app = express();
-
+const mysql = require("mysql2/promise");
+const app=express();
 app.use(express.json());
-
-let students = [
-    {
-        id: "5q4",
-        name: "sahasra",
-        age: 19
-    },
-    {
-        id: 2,
-        name: "kade",
-        age: 24
-    }
-];
-
-// Display all students
-app.get("/", (req, res) => {
-    res.json(students);
+const db=mysql.createPool({
+    host:"localhost",
+    user:"root",
+    password:"1234",
+    database:"25wh1a05q4"
 });
-
-// Get all students
-app.get("/students", (req, res) => {
-    res.json(students);
+db.getConnection().then((connection)=>{
+    console.log("MySQL connected");
+    connection.release();
+})
+.catch(error=>{
+    console.log("MySQL connection failed:",error.message);
 });
+app.get("/",(req,res)=>{
+    res.send("Welcome to student API");
 
-// Add a new student
-app.post("/students", (req, res) => {
-    students.push(req.body);
-    res.send("Student added successfully");
 });
-
-// Update a student
-app.put("/students/:id", (req, res) => {
-    const student = students.find(
-        (s) => s.id == req.params.id
-    );
-
-    if (student) {
-        student.name = req.body.name;
-        student.age = req.body.age;
-
-        res.send("Student updated successfully");
-    } else {
-        res.status(404).send("Student not found");
+app.get("/students",async(req,res)=>{
+    try{
+        const[rows] = await db.execute("SELECT * FROM students");
+        res.json(rows);
+    } catch (error) {
+        res.send("Database error:"+error.message);
     }
 });
-
-// Delete a student
-app.delete("/students/:id", (req, res) => {
-    const student = students.find(
-        (s) => s.id == req.params.id
-    );
-
-    if (student) {
-        students = students.filter(
-            (s) => s.id != req.params.id
+app.post("/students",async(req,res)=>{
+    try{
+        const{name,roll_no}=req.body;
+        await db.execute("INSERT INTO student(name,roll_no)VALUES(?,?)",
+            [name,roll_no]
         );
+        res.send("student added successfully");
+    }catch(error){
+        res.send("Database error:" +error.message);
+    }
+});
+app.put("/students/:id",async(req,res)=>{
+    try{
+        const{name,roll_no}=req.body;
+        await db.execute("UPDATE student SET name=?,roll_no? WHERE id=?",
+            [name,rollno,req.params.id]
+        );
+        res.send("student updated successfully");
 
-        res.send("Student deleted successfully");
-    } else {
-        res.status(404).send("Student not found");
+    } catch(error){
+        res.send("Database error:"+error.message);
+    }
+});
+app.delete("/students/:id",async(req,res)=>{
+    try{
+    
+        await db.execute("DELETE FROM student WHERE id=?",
+            [req.params.id]
+        );
+        res.send("student deleted successfully");
+
+    } catch(error){
+        res.send("Database error:"+error.message);
     }
 });
 
-// Start the server
-app.listen(3001, () => {
-    console.log("Server running at http://localhost:3001");
+
+app.listen(3000,()=>{
+    console.log("server is running on port 3000");
 });
